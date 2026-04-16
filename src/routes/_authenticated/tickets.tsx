@@ -41,7 +41,7 @@ export const Route = createFileRoute('/_authenticated/tickets')({
 
 function TicketsPage() {
   const { user } = Route.useRouteContext();
-  const { data: tickets = [], isLoading: loadingTickets } = useTickets(user.role === 'technician' ? user.id : undefined);
+  const { data: tickets = [], isLoading: loadingTickets } = useTickets(user.role === 'technician' ? user.technicianId : undefined);
   const { data: clients = [], isLoading: loadingClients } = useClients();
   const { data: technicians = [], isLoading: loadingTechs } = useTechnicians();
   const deleteTicketMutation = useDeleteTicket();
