@@ -6,6 +6,7 @@ export interface UserWithRole {
   id: string;
   email: string;
   role: 'admin' | 'technician';
+  technicianId?: string;
 }
 
 export const Route = createFileRoute('/_authenticated')({
@@ -19,11 +20,22 @@ export const Route = createFileRoute('/_authenticated')({
     const userRole: 'admin' | 'technician' =
       userEmail === 'mundinet.sincelejo@gmail.com' ? 'admin' : 'technician';
 
+    let technicianId: string | undefined;
+    if (userRole === 'technician') {
+      const { data } = await supabase
+        .from('technicians')
+        .select('id')
+        .eq('email', userEmail || '')
+        .maybeSingle();
+      technicianId = data?.id;
+    }
+
     return {
       user: {
         id: session.user.id,
         email: userEmail || '',
         role: userRole,
+        technicianId,
       } as UserWithRole,
     };
   },
