@@ -14,7 +14,211 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          address: string
+          company: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          company: string
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          company?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      intervention_history: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          id: string
+          performed_by: string
+          ticket_id: number
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          performed_by?: string
+          ticket_id: number
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          performed_by?: string
+          ticket_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intervention_history_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technicians: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          specialties: Database["public"]["Enums"]["service_type"][]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          name: string
+          phone?: string
+          specialties?: Database["public"]["Enums"]["service_type"][]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string
+          specialties?: Database["public"]["Enums"]["service_type"][]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ticket_parts: {
+        Row: {
+          created_at: string
+          id: string
+          part_name: string
+          ticket_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          part_name: string
+          ticket_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          part_name?: string
+          ticket_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_parts_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          assigned_tech_id: string | null
+          client_id: string
+          closed_at: string | null
+          created_at: string
+          description: string
+          equipment_model: string
+          id: number
+          priority: Database["public"]["Enums"]["ticket_priority"]
+          resolution_notes: string | null
+          resolution_time_hours: number | null
+          scheduled_date: string | null
+          scheduled_time: string | null
+          serial_number: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          status: Database["public"]["Enums"]["ticket_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_tech_id?: string | null
+          client_id: string
+          closed_at?: string | null
+          created_at?: string
+          description?: string
+          equipment_model?: string
+          id?: number
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          resolution_notes?: string | null
+          resolution_time_hours?: number | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          serial_number?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          status?: Database["public"]["Enums"]["ticket_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_tech_id?: string | null
+          client_id?: string
+          closed_at?: string | null
+          created_at?: string
+          description?: string
+          equipment_model?: string
+          id?: number
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          resolution_notes?: string | null
+          resolution_time_hours?: number | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          serial_number?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          status?: Database["public"]["Enums"]["ticket_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_assigned_tech_id_fkey"
+            columns: ["assigned_tech_id"]
+            isOneToOne: false
+            referencedRelation: "technicians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +227,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      service_type:
+        | "impresoras"
+        | "computadores"
+        | "redes_telecom"
+        | "camaras_seguridad"
+        | "desarrollo_software"
+        | "soporte_general"
+      ticket_priority: "baja" | "media" | "alta" | "critica"
+      ticket_status: "abierto" | "en_proceso" | "pausado" | "cerrado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +362,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      service_type: [
+        "impresoras",
+        "computadores",
+        "redes_telecom",
+        "camaras_seguridad",
+        "desarrollo_software",
+        "soporte_general",
+      ],
+      ticket_priority: ["baja", "media", "alta", "critica"],
+      ticket_status: ["abierto", "en_proceso", "pausado", "cerrado"],
+    },
   },
 } as const
