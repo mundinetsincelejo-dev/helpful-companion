@@ -22,7 +22,7 @@ export const Route = createFileRoute('/_authenticated/')({
 
 function DashboardPage() {
   const { user } = Route.useRouteContext();
-  const { data: tickets = [], isLoading } = useTickets(user.role === 'technician' ? user.id : undefined);
+  const { data: tickets = [], isLoading } = useTickets(user.role === 'technician' ? user.technicianId : undefined);
 
   if (isLoading) {
     return (

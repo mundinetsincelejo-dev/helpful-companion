@@ -26,7 +26,7 @@ function CalendarioPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { user } = Route.useRouteContext();
-  const { data: tickets = [], isLoading } = useTickets(user.role === 'technician' ? user.id : undefined);
+  const { data: tickets = [], isLoading } = useTickets(user.role === 'technician' ? user.technicianId : undefined);
 
   const scheduledTickets = tickets.filter((t) => t.scheduled_date);
 
