@@ -40,6 +40,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: "og:title", content: "ServiTech — Gestión de Servicio Técnico" },
       { property: "og:description", content: "Plataforma integral para gestión de solicitudes de servicio técnico" },
       { property: "og:type", content: "website" },
+      { name: "twitter:title", content: "ServiTech — Gestión de Servicio Técnico" },
+      { name: "twitter:description", content: "Plataforma integral para gestión de solicitudes de servicio técnico" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/31f3e0ea-23fb-4b12-a56e-0279dbabcfa0" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/31f3e0ea-23fb-4b12-a56e-0279dbabcfa0" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
