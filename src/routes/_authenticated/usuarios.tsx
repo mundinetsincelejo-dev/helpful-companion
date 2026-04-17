@@ -222,7 +222,7 @@ function CreateUserForm({ onClose }: { onClose: () => void }) {
       <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
       <div>
         <Label>Contraseña (mín. 8 caracteres)</Label>
-        <Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       <div>
         <Label>Rol</Label>
