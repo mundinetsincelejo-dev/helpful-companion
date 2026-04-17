@@ -262,7 +262,7 @@ function ResetPasswordForm({ userId, email, onClose }: { userId: string; email: 
       <p className="text-sm text-muted-foreground">Cuenta: <strong>{email}</strong></p>
       <div>
         <Label>Nueva contraseña (mín. 8 caracteres)</Label>
-        <Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       <Button
         className="w-full"
