@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import {
   listUsersFn, createUserFn, updateUserRoleFn, resetUserPasswordFn, deleteUserFn,
 } from '@/utils/users.functions';
+import { getAuthHeaders } from '@/utils/auth-headers';
 
 const USERS_KEY = ['admin-users'];
 
@@ -49,11 +50,12 @@ function UsuariosPage() {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: USERS_KEY,
-    queryFn: () => listUsersFn(),
+    queryFn: async () => listUsersFn({ headers: await getAuthHeaders() }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (userId: string) => deleteUserFn({ data: { userId } }),
+    mutationFn: async (userId: string) =>
+      deleteUserFn({ data: { userId }, headers: await getAuthHeaders() }),
     onSuccess: () => {
       toast.success('Usuario eliminado');
       queryClient.invalidateQueries({ queryKey: USERS_KEY });
@@ -62,8 +64,8 @@ function UsuariosPage() {
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'technician' }) =>
-      updateUserRoleFn({ data: { userId, role } }),
+    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'technician' }) =>
+      updateUserRoleFn({ data: { userId, role }, headers: await getAuthHeaders() }),
     onSuccess: () => {
       toast.success('Rol actualizado');
       queryClient.invalidateQueries({ queryKey: USERS_KEY });
@@ -208,7 +210,7 @@ function CreateUserForm({ onClose }: { onClose: () => void }) {
   const [role, setRole] = useState<'admin' | 'technician'>('technician');
 
   const mutation = useMutation({
-    mutationFn: () => createUserFn({ data: { email, password, role } }),
+    mutationFn: async () => createUserFn({ data: { email, password, role }, headers: await getAuthHeaders() }),
     onSuccess: () => {
       toast.success('Usuario creado');
       queryClient.invalidateQueries({ queryKey: USERS_KEY });
@@ -249,7 +251,7 @@ function ResetPasswordForm({ userId, email, onClose }: { userId: string; email: 
   const [password, setPassword] = useState('');
 
   const mutation = useMutation({
-    mutationFn: () => resetUserPasswordFn({ data: { userId, password } }),
+    mutationFn: async () => resetUserPasswordFn({ data: { userId, password }, headers: await getAuthHeaders() }),
     onSuccess: () => {
       toast.success('Contraseña actualizada');
       onClose();
