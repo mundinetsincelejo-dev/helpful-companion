@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedTicketsRouteImport } from './routes/_authenticated/tickets'
 import { Route as AuthenticatedTecnicosRouteImport } from './routes/_authenticated/tecnicos'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
@@ -30,6 +31,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedTicketsRoute = AuthenticatedTicketsRouteImport.update({
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/historial': typeof AuthenticatedHistorialRoute
   '/tecnicos': typeof AuthenticatedTecnicosRoute
   '/tickets': typeof AuthenticatedTicketsRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/historial': typeof AuthenticatedHistorialRoute
   '/tecnicos': typeof AuthenticatedTecnicosRoute
   '/tickets': typeof AuthenticatedTicketsRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
   '/_authenticated/tecnicos': typeof AuthenticatedTecnicosRoute
   '/_authenticated/tickets': typeof AuthenticatedTicketsRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/historial'
     | '/tecnicos'
     | '/tickets'
+    | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
     | '/historial'
     | '/tecnicos'
     | '/tickets'
+    | '/usuarios'
     | '/'
   id:
     | '__root__'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '/_authenticated/historial'
     | '/_authenticated/tecnicos'
     | '/_authenticated/tickets'
+    | '/_authenticated/usuarios'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +156,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/tickets': {
@@ -190,6 +209,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
   AuthenticatedTecnicosRoute: typeof AuthenticatedTecnicosRoute
   AuthenticatedTicketsRoute: typeof AuthenticatedTicketsRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -199,6 +219,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
   AuthenticatedTecnicosRoute: AuthenticatedTecnicosRoute,
   AuthenticatedTicketsRoute: AuthenticatedTicketsRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
@@ -213,3 +234,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
