@@ -51,9 +51,7 @@ function LoginPage() {
             <Wrench className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="font-heading text-2xl">ServiTech</CardTitle>
-          <CardDescription>
-            {isSignUp ? 'Crea tu cuenta' : 'Inicia sesión para continuar'}
-          </CardDescription>
+          <CardDescription>Inicia sesión para continuar</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -66,17 +64,13 @@ function LoginPage() {
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            {message && <p className="text-sm text-success">{message}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Cargando...' : isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}
+              {loading ? 'Cargando...' : 'Iniciar sesión'}
             </Button>
           </form>
-          <button
-            onClick={() => { setIsSignUp(!isSignUp); setError(''); setMessage(''); }}
-            className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
-          </button>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Las cuentas las crea un administrador.
+          </p>
         </CardContent>
       </Card>
     </div>
