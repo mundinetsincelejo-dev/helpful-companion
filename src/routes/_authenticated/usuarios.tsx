@@ -210,7 +210,7 @@ function CreateUserForm({ onClose }: { onClose: () => void }) {
   const [role, setRole] = useState<'admin' | 'technician'>('technician');
 
   const mutation = useMutation({
-    mutationFn: () => createUserFn({ data: { email, password, role } }),
+    mutationFn: async () => createUserFn({ data: { email, password, role }, headers: await getAuthHeaders() }),
     onSuccess: () => {
       toast.success('Usuario creado');
       queryClient.invalidateQueries({ queryKey: USERS_KEY });
@@ -251,7 +251,7 @@ function ResetPasswordForm({ userId, email, onClose }: { userId: string; email: 
   const [password, setPassword] = useState('');
 
   const mutation = useMutation({
-    mutationFn: () => resetUserPasswordFn({ data: { userId, password } }),
+    mutationFn: async () => resetUserPasswordFn({ data: { userId, password }, headers: await getAuthHeaders() }),
     onSuccess: () => {
       toast.success('Contraseña actualizada');
       onClose();
