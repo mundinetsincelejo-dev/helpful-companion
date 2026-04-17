@@ -19,30 +19,23 @@ function LoginPage() {
   const { redirect } = useSearch({ from: Route.fullPath });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    setMessage('');
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        setMessage('Revisa tu correo electrónico para confirmar tu cuenta.');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: redirect || '/' });
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // Only allow internal relative paths to prevent open redirect attacks
+      const safeRedirect =
+        redirect && redirect.startsWith('/') && !redirect.startsWith('//')
+          ? redirect
+          : '/';
+      navigate({ to: safeRedirect });
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error');
     } finally {
@@ -58,9 +51,7 @@ function LoginPage() {
             <Wrench className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="font-heading text-2xl">ServiTech</CardTitle>
-          <CardDescription>
-            {isSignUp ? 'Crea tu cuenta' : 'Inicia sesión para continuar'}
-          </CardDescription>
+          <CardDescription>Inicia sesión para continuar</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,17 +64,13 @@ function LoginPage() {
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            {message && <p className="text-sm text-success">{message}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Cargando...' : isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}
+              {loading ? 'Cargando...' : 'Iniciar sesión'}
             </Button>
           </form>
-          <button
-            onClick={() => { setIsSignUp(!isSignUp); setError(''); setMessage(''); }}
-            className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
-          </button>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Las cuentas las crea un administrador.
+          </p>
         </CardContent>
       </Card>
     </div>
