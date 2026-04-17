@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { UserWithRole } from '@/routes/_authenticated';
 import {
-  LayoutDashboard, Ticket, History, CalendarDays, Users, UserCog,
+  LayoutDashboard, Ticket, History, CalendarDays, Users, UserCog, Shield,
   Menu, X, Wrench, LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,11 +14,12 @@ const navItems = [
   { to: '/tickets' as const, icon: Ticket, label: 'Tickets' },
   { to: '/clientes' as const, icon: Users, label: 'Clientes' },
   { to: '/tecnicos' as const, icon: UserCog, label: 'Técnicos' },
+  { to: '/usuarios' as const, icon: Shield, label: 'Usuarios' },
   { to: '/historial' as const, icon: History, label: 'Historial' },
   { to: '/calendario' as const, icon: CalendarDays, label: 'Calendario' },
 ];
 
-const adminRoutes = ['/clientes', '/tecnicos'];
+const adminRoutes = ['/clientes', '/tecnicos', '/usuarios'];
 
 export function AppLayout({ children, user }: { children: React.ReactNode; user: UserWithRole }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

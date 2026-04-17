@@ -16,16 +16,27 @@ export const Route = createFileRoute('/_authenticated')({
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
 
-    const userEmail = session.user.email?.trim().toLowerCase();
-    const userRole: 'admin' | 'technician' =
-      userEmail === 'mundinet.sincelejo@gmail.com' ? 'admin' : 'technician';
+    const userEmail = session.user.email?.trim().toLowerCase() ?? '';
+
+    // Get role from user_roles table (admin takes precedence)
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.user.id);
+
+    const roleSet = new Set((roles ?? []).map((r) => r.role));
+    const userRole: 'admin' | 'technician' = roleSet.has('admin')
+      ? 'admin'
+      : roleSet.has('technician')
+        ? 'technician'
+        : 'technician';
 
     let technicianId: string | undefined;
     if (userRole === 'technician') {
       const { data } = await supabase
         .from('technicians')
         .select('id')
-        .eq('email', userEmail || '')
+        .eq('email', userEmail)
         .maybeSingle();
       technicianId = data?.id;
     }
@@ -33,7 +44,7 @@ export const Route = createFileRoute('/_authenticated')({
     return {
       user: {
         id: session.user.id,
-        email: userEmail || '',
+        email: userEmail,
         role: userRole,
         technicianId,
       } as UserWithRole,
