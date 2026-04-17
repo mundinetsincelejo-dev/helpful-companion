@@ -6,17 +6,19 @@ import type { Database } from '@/integrations/supabase/types';
 const TICKETS_KEY = ['tickets'];
 const CLIENTS_KEY = ['clients'];
 const TECHNICIANS_KEY = ['technicians'];
+const HISTORY_KEY = ['intervention_history'];
+const PARTS_KEY = ['ticket_parts'];
 
-export function useTickets(assignedToUserId?: string) {
+export function useTickets(assignedToTechId?: string) {
   return useQuery({
-    queryKey: assignedToUserId ? [...TICKETS_KEY, assignedToUserId] : TICKETS_KEY,
+    queryKey: assignedToTechId ? [...TICKETS_KEY, assignedToTechId] : TICKETS_KEY,
     queryFn: async () => {
       let query = supabase
         .from('tickets')
         .select('*, clients(*), technicians(id, name), ticket_parts(part_name)');
 
-      if (assignedToUserId) {
-        query = query.eq('assigned_tech_id', assignedToUserId);
+      if (assignedToTechId) {
+        query = query.eq('assigned_tech_id', assignedToTechId);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -27,6 +29,8 @@ export function useTickets(assignedToUserId?: string) {
 }
 
 export type Technician = Database['public']['Tables']['technicians']['Row'];
+export type InterventionHistory = Database['public']['Tables']['intervention_history']['Row'];
+export type TicketPart = Database['public']['Tables']['ticket_parts']['Row'];
 
 export function useClients() {
   return useQuery({
@@ -52,6 +56,75 @@ export function useTechnicians() {
         .order('name');
       if (error) throw error;
       return data as Technician[];
+    },
+  });
+}
+
+export function useTicketHistory(ticketId: number | null) {
+  return useQuery({
+    queryKey: [...HISTORY_KEY, ticketId],
+    enabled: ticketId != null,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('intervention_history')
+        .select('*')
+        .eq('ticket_id', ticketId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as InterventionHistory[];
+    },
+  });
+}
+
+export function useTicketParts(ticketId: number | null) {
+  return useQuery({
+    queryKey: [...PARTS_KEY, ticketId],
+    enabled: ticketId != null,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ticket_parts')
+        .select('*')
+        .eq('ticket_id', ticketId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as TicketPart[];
+    },
+  });
+}
+
+export function useAddHistory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (entry: Database['public']['Tables']['intervention_history']['Insert']) => {
+      const { data, error } = await supabase
+        .from('intervention_history')
+        .insert(entry)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [...HISTORY_KEY, data.ticket_id] });
+    },
+  });
+}
+
+export function useAddPart() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (entry: Database['public']['Tables']['ticket_parts']['Insert']) => {
+      const { data, error } = await supabase
+        .from('ticket_parts')
+        .insert(entry)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [...PARTS_KEY, data.ticket_id] });
+      queryClient.invalidateQueries({ queryKey: TICKETS_KEY });
     },
   });
 }
