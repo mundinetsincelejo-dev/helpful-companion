@@ -3,13 +3,14 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { StatusBadge, PriorityBadge } from '@/components/StatusBadge';
 import {
   statusLabels, priorityLabels, serviceTypeLabels,
   type Ticket, type Client, type TicketStatus, type TicketPriority, type ServiceType,
 } from '@/lib/mock-data';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -21,10 +22,12 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Eye, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, Loader2, Wrench, ClipboardList } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   useTickets, useClients, useTechnicians,
   useCreateTicket, useUpdateTicket, useDeleteTicket,
+  useTicketHistory, useTicketParts, useAddHistory, useAddPart,
   type Technician,
 } from '@/hooks/use-tickets';
 import type { Database } from '@/integrations/supabase/types';
@@ -41,7 +44,9 @@ export const Route = createFileRoute('/_authenticated/tickets')({
 
 function TicketsPage() {
   const { user } = Route.useRouteContext();
-  const { data: tickets = [], isLoading: loadingTickets } = useTickets(user.role === 'technician' ? user.technicianId : undefined);
+  const { data: tickets = [], isLoading: loadingTickets } = useTickets(
+    user.role === 'technician' ? user.technicianId : undefined
+  );
   const { data: clients = [], isLoading: loadingClients } = useClients();
   const { data: technicians = [], isLoading: loadingTechs } = useTechnicians();
   const deleteTicketMutation = useDeleteTicket();
@@ -53,7 +58,6 @@ function TicketsPage() {
   const [viewTicket, setViewTicket] = useState<Ticket | null>(null);
 
   const isLoading = loadingTickets || loadingClients || loadingTechs;
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -70,6 +74,10 @@ function TicketsPage() {
     const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
+
+  const canEditTicket = (t: Ticket) =>
+    user.role === 'admin' ||
+    (user.role === 'technician' && t.assigned_tech_id === user.technicianId);
 
   const openEdit = (t: Ticket) => { setEditing(t); setShowForm(true); };
   const closeForm = () => { setShowForm(false); setEditing(null); };
@@ -104,7 +112,13 @@ function TicketsPage() {
           <DialogHeader>
             <DialogTitle>{editing ? 'Editar Ticket' : 'Crear Solicitud'}</DialogTitle>
           </DialogHeader>
-          <TicketForm existing={editing} onClose={closeForm} clients={clients} technicians={technicians} userRole={user.role} />
+          <TicketForm
+            existing={editing}
+            onClose={closeForm}
+            clients={clients}
+            technicians={technicians}
+            userRole={user.role}
+          />
         </DialogContent>
       </Dialog>
 
@@ -137,27 +151,27 @@ function TicketsPage() {
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setViewTicket(t)}><Eye className="h-4 w-4" /></Button>
-                        {(user.role === 'admin' || (user.role === 'technician' && t.assigned_tech_id === user.id)) && (
-                          <>
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(t)}><Pencil className="h-4 w-4" /></Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Eliminar ticket #{t.id}?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Se eliminará permanentemente el ticket <strong>"{t.title}"</strong>. Esta acción no se puede deshacer.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteTicketMutation.mutate(t.id)}>Eliminar</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </>
+                        {canEditTicket(t) && (
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(t)}><Pencil className="h-4 w-4" /></Button>
+                        )}
+                        {user.role === 'admin' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar ticket #{t.id}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Se eliminará el ticket <strong>"{t.title}"</strong>. Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteTicketMutation.mutate(t.id)}>Eliminar</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     </td>
@@ -173,15 +187,23 @@ function TicketsPage() {
       </Card>
 
       <Dialog open={!!viewTicket} onOpenChange={(open) => !open && setViewTicket(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          {viewTicket && <TicketDetail ticket={viewTicket} client={viewTicket.clients} tech={viewTicket.technicians} />}
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {viewTicket && (
+            <TicketDetail
+              ticket={viewTicket}
+              technicians={technicians}
+              userRole={user.role}
+              userEmail={user.email}
+              technicianId={user.technicianId}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
   );
 }
 
-/* ── Ticket Form ── */
+/* ── Ticket Form (create/edit) ── */
 function TicketForm({
   existing, onClose, clients, technicians, userRole,
 }: {
@@ -218,7 +240,10 @@ function TicketForm({
   };
 
   const handleSubmit = () => {
-    if (!form.client_id || !form.title || !form.service_type || !form.assigned_tech_id) return;
+    if (!form.client_id || !form.title || !form.service_type || !form.assigned_tech_id) {
+      toast.error('Completa los campos obligatorios');
+      return;
+    }
     const payload = {
       ...form,
       service_type: form.service_type as ServiceType,
@@ -228,18 +253,25 @@ function TicketForm({
       resolution_notes: form.resolution_notes || null,
     };
     if (existing?.id) {
-      updateTicketMutation.mutate({ id: existing.id, ticket: payload });
+      updateTicketMutation.mutate(
+        { id: existing.id, ticket: payload },
+        { onSuccess: () => { toast.success('Ticket actualizado'); onClose(); } }
+      );
     } else {
-      createTicketMutation.mutate(payload as Database['public']['Tables']['tickets']['Insert']);
+      createTicketMutation.mutate(
+        payload as Database['public']['Tables']['tickets']['Insert'],
+        { onSuccess: () => { toast.success('Ticket creado'); onClose(); } }
+      );
     }
-    onClose();
   };
+
+  const isAdmin = userRole === 'admin';
 
   return (
     <div className="space-y-4">
       <div>
         <Label>Cliente</Label>
-        <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+        <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })} disabled={!isAdmin}>
           <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
           <SelectContent>
             {clients.map((c) => (
@@ -251,14 +283,14 @@ function TicketForm({
 
       <div>
         <Label>Título</Label>
-        <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Descripción breve del problema" />
+        <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} disabled={!isAdmin} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label>Categoría del Problema</Label>
-          <Select value={form.service_type} onValueChange={handleServiceTypeChange}>
-            <SelectTrigger><SelectValue placeholder="Seleccionar categoría" /></SelectTrigger>
+          <Label>Categoría</Label>
+          <Select value={form.service_type} onValueChange={handleServiceTypeChange} disabled={!isAdmin}>
+            <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
             <SelectContent>
               {(Object.keys(serviceTypeLabels) as ServiceType[]).map((s) => (
                 <SelectItem key={s} value={s}>{serviceTypeLabels[s]}</SelectItem>
@@ -267,14 +299,10 @@ function TicketForm({
           </Select>
         </div>
         <div>
-          <Label>Asignar a Técnico</Label>
+          <Label>Técnico Asignado</Label>
           {!form.service_type ? (
             <div className="flex h-9 items-center rounded-md border border-input bg-muted/50 px-3 text-sm text-muted-foreground">
-              Seleccione categoría primero
-            </div>
-          ) : availableTechs.length === 0 ? (
-            <div className="flex h-9 items-center rounded-md border border-input bg-muted/50 px-3 text-sm text-muted-foreground">
-              Sin técnicos disponibles
+              Seleccione categoría
             </div>
           ) : (
             <Select value={form.assigned_tech_id} onValueChange={(v) => setForm({ ...form, assigned_tech_id: v })}>
@@ -292,7 +320,7 @@ function TicketForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label>Prioridad</Label>
-          <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v as TicketPriority })}>
+          <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v as TicketPriority })} disabled={!isAdmin}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {(Object.keys(priorityLabels) as TicketPriority[]).map((p) => (
@@ -301,31 +329,17 @@ function TicketForm({
             </SelectContent>
           </Select>
         </div>
-        {existing ? (
-          (userRole === 'admin' || form.status !== 'cerrado') ? (
-            <div>
-              <Label>Estado</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as TicketStatus })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(statusLabels) as TicketStatus[]).map((s) => (
-                    <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <div>
-              <Label>Estado</Label>
-              <Input value={statusLabels[form.status]} readOnly className="bg-muted/50" />
-            </div>
-          )
-        ) : (
-          <div>
-            <Label>Estado</Label>
-            <Input value={statusLabels['abierto']} readOnly className="bg-muted/50" />
-          </div>
-        )}
+        <div>
+          <Label>Estado</Label>
+          <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as TicketStatus })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(statusLabels) as TicketStatus[]).map((s) => (
+                <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -334,13 +348,13 @@ function TicketForm({
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div><Label>Fecha Agendada</Label><Input type="date" value={form.scheduled_date ?? ''} onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })} /></div>
+        <div><Label>Fecha</Label><Input type="date" value={form.scheduled_date ?? ''} onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })} /></div>
         <div><Label>Hora</Label><Input type="time" value={form.scheduled_time ?? ''} onChange={(e) => setForm({ ...form, scheduled_time: e.target.value })} /></div>
       </div>
 
       <div>
         <Label>Descripción</Label>
-        <Textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Detalle del fallo o requerimiento" />
+        <Textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} disabled={!isAdmin} />
       </div>
 
       {existing && (
@@ -357,12 +371,117 @@ function TicketForm({
   );
 }
 
-/* ── Detail view ── */
-function TicketDetail({ ticket, client, tech }: {
+/* ── Ticket Detail (with management actions) ── */
+function TicketDetail({
+  ticket, technicians, userRole, userEmail, technicianId,
+}: {
   ticket: Ticket;
-  client: Client | null;
-  tech: { id: string; name: string } | null;
+  technicians: Technician[];
+  userRole: 'admin' | 'technician';
+  userEmail: string;
+  technicianId?: string;
 }) {
+  const updateMutation = useUpdateTicket();
+  const addHistory = useAddHistory();
+  const addPart = useAddPart();
+  const { data: history = [] } = useTicketHistory(ticket.id);
+  const { data: parts = [] } = useTicketParts(ticket.id);
+
+  const [status, setStatus] = useState<TicketStatus>(ticket.status);
+  const [notes, setNotes] = useState(ticket.resolution_notes ?? '');
+  const [reassignTo, setReassignTo] = useState(ticket.assigned_tech_id ?? '');
+  const [newPart, setNewPart] = useState('');
+  const [newAction, setNewAction] = useState('');
+  const [newDetails, setNewDetails] = useState('');
+
+  const canManage =
+    userRole === 'admin' ||
+    (userRole === 'technician' && ticket.assigned_tech_id === technicianId);
+
+  const eligibleTechs = technicians.filter(
+    (t) => t.active && t.specialties.includes(ticket.service_type)
+  );
+
+  const saveStatus = () => {
+    if (status === ticket.status && notes === (ticket.resolution_notes ?? '')) {
+      toast.info('Sin cambios');
+      return;
+    }
+    const update: Database['public']['Tables']['tickets']['Update'] = {
+      status,
+      resolution_notes: notes || null,
+    };
+    if (status === 'cerrado' && !ticket.closed_at) {
+      update.closed_at = new Date().toISOString();
+    }
+    updateMutation.mutate(
+      { id: ticket.id, ticket: update },
+      {
+        onSuccess: () => {
+          toast.success('Ticket actualizado');
+          if (status !== ticket.status) {
+            addHistory.mutate({
+              ticket_id: ticket.id,
+              action: `Cambio de estado: ${statusLabels[ticket.status]} → ${statusLabels[status]}`,
+              performed_by: userEmail,
+              details: notes || null,
+            });
+          }
+        },
+      }
+    );
+  };
+
+  const reassign = () => {
+    if (!reassignTo || reassignTo === ticket.assigned_tech_id) return;
+    const newTech = technicians.find((t) => t.id === reassignTo);
+    updateMutation.mutate(
+      { id: ticket.id, ticket: { assigned_tech_id: reassignTo } },
+      {
+        onSuccess: () => {
+          toast.success('Ticket reasignado');
+          addHistory.mutate({
+            ticket_id: ticket.id,
+            action: `Reasignación: ${ticket.technicians?.name ?? 'sin asignar'} → ${newTech?.name ?? '?'}`,
+            performed_by: userEmail,
+          });
+        },
+      }
+    );
+  };
+
+  const addPartHandler = () => {
+    if (!newPart.trim()) return;
+    addPart.mutate(
+      { ticket_id: ticket.id, part_name: newPart.trim() },
+      {
+        onSuccess: () => {
+          toast.success('Repuesto registrado');
+          setNewPart('');
+        },
+      }
+    );
+  };
+
+  const addHistoryEntry = () => {
+    if (!newAction.trim()) return;
+    addHistory.mutate(
+      {
+        ticket_id: ticket.id,
+        action: newAction.trim(),
+        performed_by: userEmail,
+        details: newDetails.trim() || null,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Entrada registrada');
+          setNewAction('');
+          setNewDetails('');
+        },
+      }
+    );
+  };
+
   return (
     <>
       <DialogHeader>
@@ -371,40 +490,121 @@ function TicketDetail({ ticket, client, tech }: {
           {ticket.title}
         </DialogTitle>
       </DialogHeader>
-      <div className="space-y-4 text-sm">
+      <div className="space-y-5 text-sm">
         <div className="flex flex-wrap gap-2">
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
+          <Badge variant="outline">{serviceTypeLabels[ticket.service_type]}</Badge>
         </div>
+
         <div className="grid grid-cols-2 gap-3">
-          <InfoField label="Cliente" value={client?.name ?? ''} />
-          <InfoField label="Empresa" value={client?.company ?? ''} />
-          <InfoField label="Teléfono" value={client?.phone ?? ''} />
-          <InfoField label="Email" value={client?.email ?? ''} />
-          <InfoField label="Categoría" value={serviceTypeLabels[ticket.service_type]} />
-          <InfoField label="Técnico" value={tech?.name ?? 'No asignado'} />
-          <InfoField label="Equipo" value={ticket.equipment_model} />
-          <InfoField label="Nº Serie" value={ticket.serial_number} />
+          <InfoField label="Cliente" value={ticket.clients?.name ?? ''} />
+          <InfoField label="Empresa" value={ticket.clients?.company ?? ''} />
+          <InfoField label="Teléfono" value={ticket.clients?.phone ?? ''} />
+          <InfoField label="Técnico actual" value={ticket.technicians?.name ?? 'Sin asignar'} />
+          <InfoField label="Equipo" value={ticket.equipment_model || '-'} />
+          <InfoField label="Nº Serie" value={ticket.serial_number || '-'} />
         </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Descripción</p>
-          <p className="text-foreground">{ticket.description}</p>
-        </div>
-        {ticket.resolution_notes && (
+
+        {ticket.description && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">Notas de Resolución</p>
-            <p className="text-foreground">{ticket.resolution_notes}</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Descripción</p>
+            <p>{ticket.description}</p>
           </div>
         )}
-        {ticket.scheduled_date && (
-          <div className="flex gap-3">
-            <InfoField label="Fecha Agendada" value={ticket.scheduled_date} />
-            <InfoField label="Hora" value={ticket.scheduled_time || '-'} />
-          </div>
+
+        {canManage && (
+          <Card className="bg-muted/30">
+            <CardContent className="space-y-3 p-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Gestión</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Cambiar Estado</Label>
+                  <Select value={status} onValueChange={(v) => setStatus(v as TicketStatus)}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(statusLabels) as TicketStatus[]).map((s) => (
+                        <SelectItem key={s} value={s}>{statusLabels[s]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={saveStatus} className="w-full" disabled={updateMutation.isPending}>
+                    Guardar Estado
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Notas de Resolución</Label>
+                <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Detalle del trabajo realizado..." />
+              </div>
+
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <div>
+                  <Label className="text-xs">Reasignar técnico</Label>
+                  <Select value={reassignTo} onValueChange={setReassignTo}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {eligibleTechs.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button variant="outline" onClick={reassign} className="self-end">Reasignar</Button>
+              </div>
+
+              <div>
+                <Label className="text-xs flex items-center gap-1.5"><Wrench className="h-3 w-3" /> Repuestos utilizados</Label>
+                <div className="flex gap-2">
+                  <Input value={newPart} onChange={(e) => setNewPart(e.target.value)} placeholder="Ej: Cartucho HP 664" />
+                  <Button variant="outline" onClick={addPartHandler}>Agregar</Button>
+                </div>
+                {parts.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {parts.map((p) => (
+                      <Badge key={p.id} variant="secondary" className="text-xs">{p.part_name}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label className="text-xs flex items-center gap-1.5"><ClipboardList className="h-3 w-3" /> Registrar intervención</Label>
+                <Input value={newAction} onChange={(e) => setNewAction(e.target.value)} placeholder="Acción realizada" className="mb-2" />
+                <div className="flex gap-2">
+                  <Input value={newDetails} onChange={(e) => setNewDetails(e.target.value)} placeholder="Detalles (opcional)" />
+                  <Button variant="outline" onClick={addHistoryEntry}>Registrar</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
-        {ticket.resolution_time_hours != null && (
-          <InfoField label="Tiempo Resolución" value={`${ticket.resolution_time_hours} hrs`} />
-        )}
+
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Historial de Intervenciones</p>
+          {history.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin entradas aún.</p>
+          ) : (
+            <div className="space-y-2">
+              {history.map((h) => (
+                <div key={h.id} className="rounded border-l-2 border-primary/50 bg-muted/30 px-3 py-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="font-medium">{h.action}</p>
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(h.created_at).toLocaleString('es-CO')}
+                    </p>
+                  </div>
+                  {h.details && <p className="text-xs text-muted-foreground mt-0.5">{h.details}</p>}
+                  <p className="text-[10px] text-muted-foreground mt-1">por {h.performed_by || '-'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
