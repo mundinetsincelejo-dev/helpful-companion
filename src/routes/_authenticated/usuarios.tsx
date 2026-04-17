@@ -50,11 +50,12 @@ function UsuariosPage() {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: USERS_KEY,
-    queryFn: () => listUsersFn(),
+    queryFn: async () => listUsersFn({ headers: await getAuthHeaders() }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (userId: string) => deleteUserFn({ data: { userId } }),
+    mutationFn: async (userId: string) =>
+      deleteUserFn({ data: { userId }, headers: await getAuthHeaders() }),
     onSuccess: () => {
       toast.success('Usuario eliminado');
       queryClient.invalidateQueries({ queryKey: USERS_KEY });
@@ -63,8 +64,8 @@ function UsuariosPage() {
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'technician' }) =>
-      updateUserRoleFn({ data: { userId, role } }),
+    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'technician' }) =>
+      updateUserRoleFn({ data: { userId, role }, headers: await getAuthHeaders() }),
     onSuccess: () => {
       toast.success('Rol actualizado');
       queryClient.invalidateQueries({ queryKey: USERS_KEY });
