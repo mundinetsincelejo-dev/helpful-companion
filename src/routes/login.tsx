@@ -19,30 +19,23 @@ function LoginPage() {
   const { redirect } = useSearch({ from: Route.fullPath });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    setMessage('');
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        setMessage('Revisa tu correo electrónico para confirmar tu cuenta.');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: redirect || '/' });
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // Only allow internal relative paths to prevent open redirect attacks
+      const safeRedirect =
+        redirect && redirect.startsWith('/') && !redirect.startsWith('//')
+          ? redirect
+          : '/';
+      navigate({ to: safeRedirect });
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error');
     } finally {
