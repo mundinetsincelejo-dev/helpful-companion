@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import {
   listUsersFn, createUserFn, updateUserRoleFn, resetUserPasswordFn, deleteUserFn,
 } from '@/utils/users.functions';
+import { getAuthHeaders } from '@/utils/auth-headers';
 
 const USERS_KEY = ['admin-users'];
 
